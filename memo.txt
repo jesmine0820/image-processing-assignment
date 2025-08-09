@@ -1,0 +1,21 @@
+1. capture the image
+2. Processing step
+- convert to rgb
+- apply CLAHE to improve contrast
+- bilateral filtering for rain/fog
+- dehazing algorithm if foggy
+- resize
+3. Face detection
+- use SCRFD / RetinaFace from insightface
+- detect all faces in frame
+4. Identify the middle face
+5. Face Alignment to focus the main face
+6. Feature extraction
+- use insightface
+7. Recognition
+- match the extracted embedding with the stored embeddings
+8. Post=Processing
+- draw bounding box only for the middle face
+- display name, confidence score
+9. Ovaluation
+- accuracy, recall, F1-score, false accept rate, false reject rate
