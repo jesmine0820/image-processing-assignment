@@ -2,9 +2,48 @@
 <html>
 <head>
     <title>Live Camera</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Real-Time Camera Feed</h1>
-    <img src="{{ url_for('video') }}" width="640" height="480">
+    <div class="container">
+        <div class="side-bar">
+            <div class="logo-container">
+                <img class="logo" src="{{ url_for('static', filename='img/logo.avif') }}" alt="Logo">
+                <h2>Company Name</h2>
+            </div>
+            <div class="counter-buttons">
+                <button onclick="showCounter(1)">Counter 1</button>
+                <button onclick="showCounter(2)">Counter 2</button>
+                <button onclick="showCounter(3)">Counter 3</button>
+            </div>
+        </div>
+        <div class="camera">
+            <div id="counter1" class="counter-view active">
+                <div class="camera-frame">
+                    <h2>Counter 1</h2>
+                    <img src="{{ url_for('video', counter=1) }}" alt="Camera 1">
+                </div>
+            </div>
+            <div id="counter2" class="counter-view">
+                <div style="background: #333; padding: 20px; border-radius: 10px;">
+                    <h2 style="color: yellow;">Counter 2</h2>
+                    <img src="{{ url_for('video', counter=2) }}" alt="Camera 2" style="border-radius: 10px;">
+                </div>
+            </div>
+            <div id="counter3" class="counter-view">
+                <div style="background: linear-gradient(to right, #444, #222); padding: 20px;">
+                    <h2 style="color: cyan;">Counter 3</h2>
+                    <img src="{{ url_for('video', counter=3) }}" alt="Camera 3" style="border: 3px solid cyan;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showCounter(counterNum) {
+            document.querySelectorAll('.counter-view').forEach(el => el.classList.remove('active'));
+            document.getElementById(`counter${counterNum}`).classList.add('active');
+        }
+    </script>
 </body>
 </html>

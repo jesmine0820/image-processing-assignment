@@ -1,0 +1,84 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #222;
+    color: white;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.side-bar {
+    width: 250px;
+    background-color: rgb(40, 40, 40);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.logo {
+    width: 100px;
+    height: auto;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+
+.counter-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+.counter-buttons button {
+    padding: 12px;
+    border: none;
+    background-color: #555;
+    color: white;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.counter-buttons button:hover {
+    background-color: #777;
+}
+
+.camera {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: black;
+}
+
+.camera img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.counter-view {
+            display: none; /* Hide all counters by default */
+            height: 100%;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+        .counter-view.active {
+            display: flex; /* Show active counter */
+        }
+        .camera-frame {
+            border: 5px solid white;
+            padding: 10px;
+            background: #111;
+        }

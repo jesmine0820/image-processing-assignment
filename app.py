@@ -19,7 +19,7 @@ def generate_frames():
             # Yield frame in byte format for MJPEG streaming
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
+            
 @app.route('/')
 def index():
     # HTML page with video element
