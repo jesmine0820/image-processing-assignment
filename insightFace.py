@@ -123,9 +123,8 @@ def crop_best_face(image):
     # Pick best face
     scored_faces.sort(reverse=True, key=lambda x: x[0])
     _, (x1, y1, x2, y2), best_face = scored_faces[0]
-    cropped_face = image[y1:y2, x1:x2]
 
-    return cropped_face, best_face
+    return best_face
 
 def get_face_embedding_from_obj(face_obj):
     return face_obj.embedding

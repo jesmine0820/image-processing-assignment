@@ -33,12 +33,6 @@ def real_time_pipeline():
     # Track recognition time
     current_person = None
     start_time = None
-    saved_people = set()
-
-    save_file = "processed_data/recognized_people.txt"
-    if os.path.exists(save_file):
-        with open(save_file, "r") as file:
-            saved_people = set(line.strip() for line in file.readlines())
 
     while True:
         ret, frame = video.read()
@@ -53,17 +47,10 @@ def real_time_pipeline():
         if faces:
             # Find face closest to center
             h, w, _ = frame.shape
-            img_center = np.array([w // 2, h // 2])
-            closest_face = min(
-                faces,
-                key=lambda f: np.linalg.norm(
-                    np.array([(f.bbox[0] + f.bbox[2]) / 2, (f.bbox[1] + f.bbox[3]) / 2]) - img_center
-                )
-            )
 
             # Crop and preprocess
             processed_img = preprocess_image(frame)
-            cropped_face, face_obj = crop_best_face(processed_img)
+            face_obj = crop_best_face(processed_img)
 
             if face_obj is not None:
                 # Get embedding
