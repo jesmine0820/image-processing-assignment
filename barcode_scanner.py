@@ -1,18 +1,18 @@
 import cv2 as cv
 
 def barcode_scanner(camera):
-    while True:
-        frame = camera.get_frame()
-        if frame is None:
-            continue 
+    try:
+        while True:
+            frame = camera.get_frame()
+            if frame is None:
+                continue
+            frame = cv.flip(frame, 1)
 
-        frame = cv.flip(frame, 1)
+            ok, buf = cv.imencode(".jpg", frame)
+            if not ok:
+                continue
 
-        ret, buffer = cv.imencode('.jpg', frame)
-        if not ret:
-            continue
-
-        frame_bytes = buffer.tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            yield (b"--frame\r\n"
+                   b"Content-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n")
+    except GeneratorExit:
+        return

@@ -1,100 +1,102 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Live Camera</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <title>Live Camera</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <!--Side bar-->
-        <div class="side-bar">
-            <div class="logo-container">
-                <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
-                <h2 class="logo-text">FaceCert</h2>
-            </div>
-            <div class="counter-buttons">
-                <button onclick="showCounter(1)">Counter 1</button>
-                <button onclick="showCounter(2)">Counter 2</button>
-                <button onclick="showCounter(3)">Counter 3</button>
-            </div>
-        </div>
-        <!--Camera field-->
-        <div class="camera">
-            <!--Counter 1-->
-            <!--Allow user to scan face on the left camera
-                and scan student id card on the right side,
-                then the student information will be show at bottom right side-->
-            <div id="counter1" class="counter-view active">
-                <div class="counter-1-frame">
-                    <h2>Counter 1</h2>
-                    <div class="counter-layout">
-                        <div class="camera-feed">
-                            <img src="{{ url_for('video', counter=1)}}" alt="Camera 1">
-                        </div>
-                        <div class="scanner-section">
-                            <div class="barcode-scanner">
-                                <h3>Scan Barcode Here: </h3>
-                                <button onclick="switchToBarcode(1, barcode)">Scan</button>
-                            </div>
-                            <div class="person-info">
-                                <h3>Person Info</h3>
-                                <p><strong>ID: </strong> <span id="personId">---</span></p>
-                                <p><strong>Name: </strong> <span id="personName">---</span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!--Counter 2-->
-            <!--Allow user to scan barcode on the left camera,
-                then it will show student's picture, namd and id at the right side-->
-            <div id="counter2" class="counter-view">
-                <div class="counter-2-frame">
-                    <h2 >Counter 2</h2>
-                    <div class="counter-layout">
-                        <div class="camera-feed">
-                            <img src="{{ url_for('video', counter=2)}}" alt="Camera 2">
-                        </div>
-                        <div class="person-image">
-                            <img src="" alt="People">
-                        </div>
-                        <div class="person-info">
-                                <h3>Person Info</h3>
-                                <p><strong>ID: </strong> <span id="personId">---</span></p>
-                                <p><strong>Name: </strong> <span id="personName">---</span></p>
-                            </div>
-                    </div>
-                </div>
-            </div>
-            <!--Counter 3-->
-            <!--Allow tracking the user speed for announcement purpose-->
-            <div id="counter3" class="counter-view">
-                <div class="counter-3-frame">
-                    <h2>Counter 3</h2>
-                    <div class="camera-half">
-                        <img src="{{ url_for('video', counter=3)}}" alt="Camera 3">
-                    </div>
-                    <div class="text-input">
-                        <h3>Candidate</h3>
-                        <p><strong>Current: </strong> <span id="personId">---</span></p>
-                        <p><strong>Next: </strong>  <span id="personId">---</span></p>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="container">
+    <!-- Side bar -->
+    <div class="side-bar">
+      <div class="logo-container">
+        <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
+        <h2 class="logo-text">FaceCert</h2>
+      </div>
+      <div class="counter-buttons">
+        <button onclick="showCounter(1)">Counter 1</button>
+        <button onclick="showCounter(2)">Counter 2</button>
+        <button onclick="showCounter(3)">Counter 3</button>
+      </div>
     </div>
-    <!--Popup model-->
-    <div id="popupModel" class="popup">
-        <div class="popup-content">
-            <h3>Candidate's Token</h3>
-            <button onclick="">Get</button>
+
+    <!-- Camera field -->
+    <div class="camera">
+      <!-- Counter 1 -->
+      <div id="counter1" class="counter-view active">
+        <div class="counter-1-frame">
+          <h2>Counter 1</h2>
+          <div class="counter-layout">
+            <div class="camera-feed">
+              <img alt="Camera 1">
+            </div>
+            <div class="scanner-section">
+              <div class="barcode-scanner">
+                <h3>Scan Barcode Here:</h3>
+                <button onclick="switchToBarcode(1)">Scan</button>
+              </div>
+              <div class="person-info">
+                <h3>Person Info</h3>
+                <p><strong>ID: </strong> <span id="personId">---</span></p>
+                <p><strong>Name: </strong> <span id="personName">---</span></p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Counter 2 -->
+      <div id="counter2" class="counter-view">
+        <div class="counter-2-frame">
+          <h2>Counter 2</h2>
+          <div class="counter-layout">
+            <div class="camera-feed">
+              <img alt="Camera 2">
+            </div>
+            <div class="person-image">
+              <img src="" alt="People">
+            </div>
+            <div class="person-info">
+              <h3>Person Info</h3>
+              <p><strong>ID: </strong> <span id="personId2">---</span></p>
+              <p><strong>Name: </strong> <span id="personName2">---</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Counter 3 -->
+      <div id="counter3" class="counter-view">
+        <div class="counter-3-frame">
+          <h2>Counter 3</h2>
+          <div class="camera-half">
+            <div class="camera-feed">
+              <img alt="Camera 3">
+            </div>
+          </div>
+          <div class="text-input">
+            <h3>Candidate</h3>
+            <p><strong>Current: </strong> <span id="currentPerson">---</span></p>
+            <p><strong>Next: </strong>  <span id="nextPerson">---</span></p>
+          </div>
+        </div>
+      </div>
     </div>
-    <!--Sucess message-->
-    <div id="successMessage" class="success hidden">
-        <p>Successfully processed! Enjoy your graduation!</p>
-        <p>Moving to next person...</p>
+  </div>
+
+  <!-- Popup modal -->
+  <div id="popupModel" class="popup">
+    <div class="popup-content">
+      <h3>Candidate's Token</h3>
+      <button>Get</button>
     </div>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </div>
+
+  <!-- Success message -->
+  <div id="successMessage" class="success hidden">
+    <p>Successfully processed! Enjoy your graduation!</p>
+    <p>Moving to next person...</p>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
