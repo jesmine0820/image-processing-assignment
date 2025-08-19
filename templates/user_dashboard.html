@@ -10,7 +10,7 @@
         <div class="side-bar">
             <div class="logo-container">
                 <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
-                <h2 class="logo-text">Company Name</h2>
+                <h2 class="logo-text">FaceCert</h2>
             </div>
             <div class="counter-buttons">
                 <button onclick="showCounter(1)">Counter 1</button>
@@ -34,7 +34,7 @@
                         <div class="scanner-section">
                             <div class="barcode-scanner">
                                 <h3>Scan Barcode Here: </h3>
-                                <button onclick="switchToBarcode(1)">Scan</button>
+                                <button onclick="switchToBarcode(1, barcode)">Scan</button>
                             </div>
                             <div class="person-info">
                                 <h3>Person Info</h3>

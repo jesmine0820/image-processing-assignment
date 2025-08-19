@@ -1,9 +1,27 @@
-function showCounter(counterNum) {
+let currentStream = null;
+
+function showCounter(counterNum, mode="face") {
+    // Hidde all counters
     document.querySelectorAll('.counter-view').forEach(el => el.classList.remove('active'));
-    document.getElementById(`counter${counterNum}`).classList.add('active');
+
+    // Show selected counter
+    const counterDiv = document.getElementById(`counter${counterNum}`);
+    counterDiv.classList.add('active');
+
+    // Find camera <img> inside
+    let img = counterDiv.querySelector(".camera-feed img");
+
+    // Stop previous stream
+    if (currentStream) {
+        currentStream.src = "";
+    }
+
+    // Start new stream
+    img.src = `/video/${counterNum}?mode=${mode}`;
+    currentStream = img;
 }
 
-function switchToBarcode(counter) {
-    let img = document.querySelector(`#counter${counter} .camera-feed img`);
-    img.src = `/video/${counter}?mode=barcode`;
-}
+window.onload = function() {
+    showCounter(1, "face");
+};
+
