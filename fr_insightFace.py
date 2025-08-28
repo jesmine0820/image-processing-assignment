@@ -3,6 +3,7 @@ import cv2 as cv
 import pickle
 import time
 import numpy as np
+from camera import CameraStream
 from insightface.app import FaceAnalysis
 from huggingface_hub import hf_hub_download
 
@@ -115,14 +116,17 @@ def draw_result(image, name, score):
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     return image
 
-def real_time_pipeline():
+def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
     current_person = None
     start_time = None
 
     while True:
-        ret, frame = video.read()
-        if not ret:
-            break
+        frame = camera.get_frame()
+        if frame is None:
+            time.sleep(0.01)
+            continue
+
+        person_id, name = None, None
 
         frame = cv.flip(frame, 1)
         rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
@@ -162,6 +166,11 @@ def real_time_pipeline():
                 current_person = smoothed_id
                 start_time = time.time()
 
+        latest_recognition[counter] = {
+            "id": person_id if person_id else "---",
+            "name": name if name else "---"
+        }
+        
         # draw middle guide box
         h, w, _ = frame.shape
         rect_w, rect_h = 200, 200
@@ -170,9 +179,11 @@ def real_time_pipeline():
         bottom_right = (center_x + rect_w // 2, center_y + rect_h // 2)
         cv.rectangle(frame, top_left, bottom_right, (255, 0, 0), 2)
 
-        cv.imshow("Face Recognition", frame)
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
+        # Encode frame as JPEG
+        ret, jpeg = cv.imencode('.jpg', frame)
+        if not ret:
+            continue
 
-    video.release()
-    cv.destroyAllWindows()
+        # Yield frame in Flask streaming format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')

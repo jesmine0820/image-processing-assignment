@@ -25,6 +25,18 @@ function switchToBarcode(counterNum) {
   showCounter(counterNum, "barcode");
 }
 
+function updateRecognition() {
+    fetch("/recognition/1")
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById("personId").textContent = data.id;
+            document.getElementById("personName").textContent = data.name;
+        })
+        .catch(err => console.error(err));
+}
+
+setInterval(updateRecognition, 500);
+
 window.onload = function () {
   showCounter(1, "face");
 };

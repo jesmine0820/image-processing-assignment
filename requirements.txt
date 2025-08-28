@@ -15,3 +15,5 @@ pyzbar
 pyttsx3
 ultralytics
 deep-sort-realtime
+dlib
+face_recognition

@@ -1,17 +1,17 @@
 from flask import Flask, render_template, Response, request, redirect, url_for, session
-from faceRecognition import insightFace
-from barcode_scanner import barcode_scanner
 from database import create_recog_db
 from camera import CameraStream
 from tracking import track_person
+from fr_insightFace import real_time_pipeline
 
 app = Flask(__name__)
 app.secret_key = "image_processing_assignment"
 
-# Users
-users = {
-    "admin": {"password": "admin123", "role": "admin"},
-    "user": {"password": "user123", "role": "user"},
+# Initializer
+latest_recognition = {
+    1: {"id": "---", "name": "---"},
+    2: {"id": "---", "name": "---"},
+    3: {"id": "---", "name": "---"}
 }
 
 # Init DB
@@ -36,39 +36,12 @@ def release_all_cameras():
 # --- Routes ---
 @app.route("/")
 def index():
-    return render_template("login.html")
+    return render_template("index.html")
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    error = None
-    if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
-        role = request.form.get("role", "")
-
-        user = users.get(username)
-        if user and user["password"] == password and user["role"] == role:
-            session["username"] = username
-            session["role"] = role
-            return redirect(url_for("admin_dashboard" if role == "admin" else "user_dashboard"))
-        else:
-            error = "Invalid username, password, or role!"
-    return render_template("login.html", error=error)
-
-@app.route("/admin_dashboard")
-def admin_dashboard():
-    return render_template("admin_dashboard.html")
-
-@app.route("/user_dashboard")
-def user_dashboard():
-    get_camera(0)
-    return render_template("user_dashboard.html")
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    release_all_cameras()
-    return redirect(url_for("login"))
+@app.route("/recognition/<int:counter>")
+def recognition(counter):
+    data = latest_recognition.get(counter, {"id": "---", "name": "---"})
+    return data
 
 @app.route("/video/<int:counter>")
 def video(counter):
@@ -78,14 +51,14 @@ def video(counter):
     camera = get_camera(0)
 
     if counter == 1:
-        generator = barcode_scanner(camera) if mode == "barcode" else insightFace(camera)
+        generator = real_time_pipeline(camera, latest_recognition)
     elif counter == 2:
-        generator = barcode_scanner(camera)
+        generator = real_time_pipeline(camera)
     elif counter == 3:
         generator =  track_person()
     else:
         # default fallback
-        generator = barcode_scanner(camera)
+        generator = real_time_pipeline(camera)
 
     return Response(generator, mimetype="multipart/x-mixed-replace; boundary=frame")
 
