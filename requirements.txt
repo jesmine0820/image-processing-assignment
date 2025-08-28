@@ -1,0 +1,17 @@
+opencv-python
+numpy
+insightface
+huggingface-hub
+onnxruntime-gpu
+mtcnn
+keras-facenet
+scikit-learn
+python-barcode
+Pillow
+zxing-cpp
+qrcode
+yagmail
+pyzbar
+pyttsx3
+ultralytics
+deep-sort-realtime

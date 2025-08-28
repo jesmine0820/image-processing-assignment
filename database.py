@@ -1,11 +1,5 @@
-'''
-Done liao, dont touch
-'''
-
-
 import os
 import sqlite3
-
 
 # ------------------------ Database ------------------------
 DB_FILE = "database/recognized_people.db"

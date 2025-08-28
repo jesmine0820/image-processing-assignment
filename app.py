@@ -1,8 +1,9 @@
 from flask import Flask, render_template, Response, request, redirect, url_for, session
-from faceRecognition import real_time_pipeline
+from faceRecognition import insightFace
 from barcode_scanner import barcode_scanner
 from database import create_recog_db
 from camera import CameraStream
+from tracking import track_person
 
 app = Flask(__name__)
 app.secret_key = "image_processing_assignment"
@@ -77,9 +78,11 @@ def video(counter):
     camera = get_camera(0)
 
     if counter == 1:
-        generator = barcode_scanner(camera) if mode == "barcode" else real_time_pipeline(camera)
-    elif counter in (2, 3):
+        generator = barcode_scanner(camera) if mode == "barcode" else insightFace(camera)
+    elif counter == 2:
         generator = barcode_scanner(camera)
+    elif counter == 3:
+        generator =  track_person()
     else:
         # default fallback
         generator = barcode_scanner(camera)
