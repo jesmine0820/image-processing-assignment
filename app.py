@@ -1,8 +1,9 @@
-from flask import Flask, render_template, Response, request, redirect, url_for, session
+from flask import Flask, render_template, Response, request, jsonify
 from database import create_recog_db
 from camera import CameraStream
 from tracking import track_person
 from fr_insightFace import real_time_pipeline
+from fr_mtcnn_facenet import real_time
 
 app = Flask(__name__)
 app.secret_key = "image_processing_assignment"
@@ -17,11 +18,16 @@ latest_recognition = {
 # Init DB
 create_recog_db()
 
+# Selected models (default)
+selected_models = {
+    "face": "insightFace",
+    "barcode": "zxing"
+}
+
 # --- Camera Pool ---
 cameras = {}
 
 def get_camera(index=0):
-    """Get or create a shared CameraStream for the given index."""
     cam = cameras.get(index)
     if cam is None:
         cam = CameraStream(index).start()
@@ -47,11 +53,14 @@ def recognition(counter):
 def video(counter):
 
     mode = request.args.get("mode", "face")
-
     camera = get_camera(0)
 
     if counter == 1:
-        generator = real_time_pipeline(camera, latest_recognition)
+        if mode == "face":
+            if selected_models["face"] == "insightFace":
+                generator = real_time_pipeline(camera)
+            else:
+                generator = real_time(camera)
     elif counter == 2:
         generator = real_time_pipeline(camera)
     elif counter == 3:
@@ -61,6 +70,14 @@ def video(counter):
         generator = real_time_pipeline(camera)
 
     return Response(generator, mimetype="multipart/x-mixed-replace; boundary=frame")
+
+@app.route("/save-settings", methods=["POST"])
+def save_settings():
+    data = request.json
+    selected_models["face"] = data.get("face", "insightFace")
+    selected_models["barcode"] = data.get("barcode", "zxing")
+    return jsonify({"status": "success", "selected": selected_models})
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

@@ -89,6 +89,30 @@
     </div>
   </div>
 
+  <!-- Setting popup--> 
+  <div id="settingModel" class="popup hidden"> 
+    <div class="popup-content"> 
+      <h3>Choose Face Recognition Model</h3> 
+      <div class="face-recognition-model"> 
+        <label for="face-recognition">Model:</label> 
+        <select id="face-recognition"> 
+          <option value="insightFace">InsightFace</option> 
+          <option value="mtcnn_facenet">MTCNN with FaceNet</option> 
+        </select> </div> h3>Choose Barcode Detection Model</h3> 
+        <div class="barcode-detection-model"> 
+          <label for="barcode-detection">Model:</label> 
+          <select id="barcode-detection"> 
+            <option value="zxing">ZXingCpp</option> 
+            <option value="pyzbar">ZBar</option> 
+          </select> 
+        </div> 
+        <div class="save-cancel-button"> 
+          <button id="cancelSetting">Cancel</button> 
+          <button id="saveSetting">Save</button> 
+        </div> 
+      </div> 
+    </div>
+
   <!-- Popup modal -->
   <div id="popupModel" class="popup">
     <div class="popup-content">

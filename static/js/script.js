@@ -37,6 +37,30 @@ function updateRecognition() {
 
 setInterval(updateRecognition, 500);
 
+document.getElementById("saveSetting").addEventListener("click", () => {
+  const faceModel = document.getElementById("face-recognition").value;
+  const barcodeModel = document.getElementById("barcode-detection").value;
+
+  fetch("/save-settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      face: faceModel,
+      barcode: barcodeModel,
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("Settings saved:", data);
+      document.getElementById("settingModel").classList.add("hidden");
+    })
+    .catch((err) => console.error(err));
+});
+
+document.getElementById("cancelSetting").addEventListener("click", () => {
+  document.getElementById("settingModel").classList.add("hidden");
+});
+
 window.onload = function () {
   showCounter(1, "face");
 };
