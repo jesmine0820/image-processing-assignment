@@ -22,7 +22,6 @@ class CameraStream:
         self.max_retries = 5
 
     def initialize_camera(self):
-        """Initialize or reinitialize the camera"""
         if self.cap is not None:
             try:
                 self.cap.release()

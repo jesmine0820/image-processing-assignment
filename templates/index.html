@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Live Camera</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
@@ -8,11 +9,13 @@
   <div class="container">
     <!-- Side bar -->
     <div class="side-bar">
+      <!-- Logo -->
       <div class="logo-container">
         <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
         <h2 class="logo-text">FaceCert</h2>
       </div>
       
+      <!-- Counter -->
       <div class="counter-buttons">
         <button onclick="showCounter(1)">Counter 1</button>
         <button onclick="showCounter(2)">Counter 2</button>
@@ -36,15 +39,17 @@
         <div id="save-status" class="save-status"></div>
       </div>
 
-      
-      
+      <!-- Send Email Button -->
+      <div class="send-button">
+        <button onclick="sendEmail()">Send Graduation Email</button>
+      </div>
     </div>
 
     <!-- Camera field -->
     <div class="camera">
       <!-- Counter 1 -->
       <div id="counter1" class="counter-view active">
-        <div class="counter-1-frame">
+        <div class="counter-frame">
           <h2>Counter 1</h2>
           <div class="counter-layout">
             <div class="camera-feed">
@@ -52,9 +57,10 @@
             </div>
             <div class="scanner-section">
               <div class="barcode-scanner">
-                <h3>Scan Barcode Here:</h3>
-                <button onclick="switchToBarcode(1)">Scan</button>
+                <h3>Barcode Scan</h3>
+                <button id="barcodeBtn" onclick="scanBarcode()" disabled>Scan Barcode</button>
               </div>
+
               <div class="person-info">
                 <h3>Person Info</h3>
                 <p><strong>ID: </strong> <span id="personId">---</span></p>
@@ -67,7 +73,7 @@
 
       <!-- Counter 2 -->
       <div id="counter2" class="counter-view">
-        <div class="counter-2-frame">
+        <div class="counter-frame">
           <h2>Counter 2</h2>
           <div class="counter-layout">
             <div class="camera-feed">
@@ -87,20 +93,41 @@
 
       <!-- Counter 3 -->
       <div id="counter3" class="counter-view">
-        <div class="counter-3-frame">
+        <div class="counter-frame">
           <h2>Counter 3</h2>
-          <div class="camera-half">
-            <div class="camera-feed">
+          <div class="counter-layout">
+            <div class="camera-half">
               <img src="" alt="Camera 3">
             </div>
-          </div>
-          <div class="text-input">
-            <h3>Candidate</h3>
-            <p><strong>Current: </strong> <span id="currentPerson">---</span></p>
-            <p><strong>Next: </strong>  <span id="nextPerson">---</span></p>
-            <button onclick="resetScan()">Reset Scan</button>
+            <div id="queueDisplay" class="queue-display hidden">
+              <h3>Queue List</h3>
+              <ul id="queueList"></ul>
+            </div>
+            <div class="text-input">
+              <h3>Candidate</h3>
+              <p><strong>Current: </strong> <span id="currentPerson">---</span></p>
+              <p><strong>Next: </strong> <span id="nextPerson">---</span></p>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Popup -->
+  <div id="qrPopup" class="qr-popup hidden">
+    <h3>🎓 Graduation Ticket</h3>
+    <img id="qrImage" src="" alt="QR Code">
+  </div>
+
+  <div id="verificationModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Identity Verification</h3>
+      <div id="verificationResult"></div>
+      <div id="qrDisplay" class="hidden">
+        <img id="verifiedQR" src="" alt="Verified QR Code">
+        <p>This QR code will disappear in <span id="countdown">10</span> seconds</p>
       </div>
     </div>
   </div>

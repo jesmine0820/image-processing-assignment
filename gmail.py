@@ -54,7 +54,6 @@ def send_graduation_tickets(csv_path=CSV_PATH, barcode_dir=BARCODE_DIR):
     df = pd.read_csv(csv_path)
 
     for _, student in df.iterrows():
-        # Skip if no email column or empty
         if "email" not in student or pd.isna(student["email"]):
             continue
 
@@ -78,3 +77,67 @@ def send_graduation_tickets(csv_path=CSV_PATH, barcode_dir=BARCODE_DIR):
         """
 
         send_email_with_barcode(email, subject, body, barcode_file)
+
+def send_qrcode(student_id, csv_path="dataset/dataset.csv", qr_dir="database/QR_codes"):
+    try:
+        df = pd.read_csv(csv_path)
+        student_data = df[df["StudentID"] == student_id]
+        
+        if student_data.empty:
+            print(f"[ERROR] Student with ID {student_id} not found in dataset")
+            return False
+
+        student = student_data.iloc[0]
+        name = student["Name"]
+        email = student.get("email", "")
+        
+        if not email:
+            print(f"[ERROR] No email address found for student {student_id}")
+            return False
+    
+        qr_filename1 = f"{student_id}.png"
+        qr_filename2 = f"{student_id}_{name.replace(' ', '_')}.png"
+        
+        qr_path = None
+        
+        if os.path.exists(os.path.join(qr_dir, qr_filename1)):
+            qr_path = os.path.join(qr_dir, qr_filename1)
+        elif os.path.exists(os.path.join(qr_dir, qr_filename2)):
+            qr_path = os.path.join(qr_dir, qr_filename2)
+        else:
+            print(f"[ERROR] QR code not found for student {student_id}")
+            return False
+        
+        subject = "🎓 Your Graduation QR Code"
+        body = f"""
+            Dear {name},
+
+            Congratulations on your upcoming graduation! 🎉
+
+            Attached is your personalized QR code for the graduation ceremony. 
+            Please present this QR code at the entrance for verification.
+
+            Important Details:
+            - Student ID: {student_id}
+            - Name: {name}
+            - Faculty: {student.get('Faculty', 'N/A')}
+            - Course: {student.get('Course', 'N/A')}
+
+            Please keep this QR code safe and bring it with you to the ceremony.
+
+            Best regards,
+            Graduation Committee
+        """
+
+        success = send_email_with_barcode(email, subject, body, qr_path)
+        
+        if success:
+            print(f"[INFO] QR code email sent successfully to {name} ({email})")
+        else:
+            print(f"[ERROR] Failed to send QR code email to {name} ({email})")
+        
+        return success
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to send QR code for student {student_id}: {e}")
+        return False

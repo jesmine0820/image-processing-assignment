@@ -3,8 +3,8 @@ import sqlite3
 import barcode
 import pandas as pd
 from barcode.writer import ImageWriter
-from huggingface_hub import Repository
 
+# ------------------------ Generate BarCode Data ------------------------
 def generate_barcodes(
     dataset_path="dataset/dataset.csv",
     output_dir="database/barcode_generated"

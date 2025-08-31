@@ -1,15 +1,20 @@
 import cv2 as cv
 import time
+import pandas as pd
 from camera import CameraStream
-from fr_insightFace import(
-    detector, embeddings_data,smoother,
+from fr_insightFace import (
+    detector, embeddings_data, smoother,
     get_face_embedding_from_obj, recognize_face, draw_result
 )
-from fr_mtcnn_facenet import(
+from fr_mtcnn_facenet import (
     detector_mtcnn, face_database,
     get_top_matches
 )
 
+dataset_df = pd.read_csv("dataset/dataset.csv")  # adjust path if needed
+id_to_name = dict(zip(dataset_df["StudentID"], dataset_df["Name"]))
+
+# InsightFace 
 def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
     current_person = None
     start_time = None
@@ -28,7 +33,7 @@ def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
         faces = detector.get(rgb_frame)
 
         if faces:
-            # pick best face (highest det_score)
+            # pick best face
             faces.sort(key=lambda f: f.det_score, reverse=True)
             best_face = faces[0]
 
@@ -42,7 +47,12 @@ def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
             embedding = get_face_embedding_from_obj(best_face)
 
             # recognize
-            person_id, name, score = recognize_face(embedding, embeddings_data)
+            person_id, pred_name, score = recognize_face(embedding, embeddings_data)
+
+            if person_id in id_to_name:
+                name = id_to_name[person_id]
+            else:
+                name = pred_name
 
             # smooth results
             smoother.add_recognition(person_id, score)
@@ -64,7 +74,7 @@ def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
             "id": person_id if person_id else "---",
             "name": name if name else "---"
         }
-        
+
         # draw middle guide box
         h, w, _ = frame.shape
         rect_w, rect_h = 200, 200
@@ -82,6 +92,8 @@ def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
 
+
+# MTCNN + FaceNet 
 def real_time(camera: CameraStream, latest_recognition, counter=1):
 
     # Parameters for stillness detection
@@ -144,18 +156,16 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
                         face_img = frame[y1:y2, x1:x2]
 
                         top_matches = get_top_matches(face_img, face_database)
-
-                        print(f"\nCaptured face after being still for {still_duration} seconds:")
-                        for match_name, sim in top_matches:
-                            print(f"  {match_name}: {sim * 100:.2f}% similarity")
-
                         captured = True
                         
-                        # Set recognition results when captured
+                        # always update with Top-1
                         if top_matches:
-                            best_name, best_sim = top_matches[0]
-                            name = best_name
-                            person_id = best_name  # or use a different ID system if available
+                            best_id, best_sim = top_matches[0]
+                            person_id = best_id
+                            name = id_to_name.get(best_id, best_id)  # map ID → Name if exists
+
+                            print(f"\nCaptured face: {name} ({best_sim*100:.2f}% similarity)")
+
             else:
                 still_start_time = None
                 captured = False
@@ -165,16 +175,16 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
 
             if captured and top_matches:
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                best_name, best_sim = top_matches[0]
-                label = f"{best_name} ({best_sim*100:.1f}%)"
+                best_id, best_sim = top_matches[0]
+                label = f"{id_to_name.get(best_id, best_id)} ({best_sim*100:.1f}%)"
                 (label_width, label_height), baseline = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.7, 2)
                 cv.rectangle(frame, (x, y - label_height - baseline - 5), (x + label_width, y), (0, 255, 0), cv.FILLED)
                 cv.putText(frame, label, (x, y - 5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
-                
-                # Stable detection logic (similar to the sample)
+
+                # Stable detection logic (5s)
                 if name == current_person:
                     if start_time and (time.time() - start_time >= 5):
-                        print(f"Detected: {name}, Score: {best_sim}")
+                        print(f"Stable detection: {name}, Score: {best_sim}")
                         start_time = None
                 else:
                     current_person = name
@@ -182,7 +192,7 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
             else:
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
 
-        # Update latest_recognition dictionary
+        # Update latest_recognition dictionary (always Top-1)
         latest_recognition[counter] = {
             "id": person_id if person_id else "---",
             "name": name if name else "---"
