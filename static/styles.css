@@ -176,7 +176,6 @@ body {
 }
 
 /* QR pop up */
-
 .qr-popup {
   position: fixed;
   top: 50%;
@@ -241,18 +240,6 @@ body {
   cursor: pointer;
 }
 
-.hidden {
-  display: none !important;
-}
-
-.success {
-  color: green;
-}
-
-.error {
-  color: red;
-}
-
 #qrDisplay img {
   max-width: 200px;
   margin: 15px auto;
@@ -289,4 +276,16 @@ body {
 
 .queue-display li:last-child {
   border-bottom: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.success {
+  color: green;
+}
+
+.error {
+  color: red;
 }

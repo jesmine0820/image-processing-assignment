@@ -5,31 +5,43 @@ let faceId = "---";
 let barcodeId = "---";
 let verificationTimeout = null;
 
-// When the app start
-document.addEventListener('DOMContentLoaded', function() {
+// -------------------- INITIALIZATION --------------------
+document.addEventListener("DOMContentLoaded", () => {
   loadSettings();
   showCounter(1, "face");
   setInterval(updateRecognition, 3000);
+  updateQueueDisplay();
+
+  // Modal close button
+  const modal = document.getElementById("verificationModal");
+  const closeBtn = document.getElementsByClassName("close")[0];
+  closeBtn.onclick = () => {
+    modal.classList.add("hidden");
+    if (verificationTimeout) clearInterval(verificationTimeout);
+    resetScan();
+    showCounter(1, "face");
+  };
 });
 
-// Change between counter
+// -------------------- CAMERA VIEW --------------------
 function showCounter(counterNum, mode = "face") {
   currentCounter = counterNum;
   currentMode = mode;
 
-  document.querySelectorAll(".counter-view").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".counter-view").forEach((el) =>
+    el.classList.remove("active")
+  );
+
   const counterDiv = document.getElementById(`counter${counterNum}`);
   counterDiv.classList.add("active");
 
   const img = counterDiv.querySelector(".camera-feed img");
-  if (currentStream) currentStream.src = "";
-  if (img) {
-    img.src = `/video/${counterNum}?mode=${encodeURIComponent(mode)}&t=${Date.now()}`;
-    currentStream = img;
-  }
+  img.src = `/video/${counterNum}?mode=${mode}&t=${Date.now()}`;
+
+  updateRecognition();
 }
 
-// --- Setting Section---
+// -------------------- SETTINGS --------------------
 function saveSettings() {
   const faceModel = document.getElementById("face-recognition").value;
   const barcodeModel = document.getElementById("barcode-detection").value;
@@ -37,192 +49,186 @@ function saveSettings() {
   fetch("/save-settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ face: faceModel, barcode: barcodeModel })
+    body: JSON.stringify({ face: faceModel, barcode: barcodeModel }),
   });
 }
 
 function loadSettings() {
   fetch("/get-settings")
-    .then(res => res.json())
-    .then(data => {
+    .then((res) => res.json())
+    .then((data) => {
       document.getElementById("face-recognition").value = data.face;
       document.getElementById("barcode-detection").value = data.barcode;
     });
 }
 
+// -------------------- RECOGNITION --------------------
 function updateRecognition() {
-  fetch(`/recognition/${currentCounter}`)
-    .then(res => res.json())
-    .then(data => {
-      document.getElementById(`personId${currentCounter === 1 ? "" : currentCounter}`).textContent = data.id || "---";
-      document.getElementById(`personName${currentCounter === 1 ? "" : currentCounter}`).textContent = data.name || "---";
-      
-      // Store the face ID when detected at counter 1
-      if (currentCounter === 1 && data.id && data.id !== "---") {
+  if (currentCounter === 3) {
+    updateQueueDisplay();
+    return;
+  }
+
+  fetch(`/recognition/${currentCounter}?mode=${encodeURIComponent(currentMode)}`)
+    .then((res) => res.json())
+    .then((data) => {
+      updatePersonDisplay(data);
+
+      // Capture face ID at Counter 1
+      if (currentCounter === 1 && currentMode === "face" && data.id && data.id !== "---") {
         faceId = data.id;
-        // Enable barcode scan button
         document.getElementById("barcodeBtn").disabled = false;
       }
-      
-      // For counter 2, automatically add to queue when QR is scanned
+
+      // Auto add to queue at Counter 2
       if (currentCounter === 2 && data.id && data.id !== "---") {
         addToQueue(data.id);
       }
     })
-    .catch(() => {
-      document.getElementById(`personId${currentCounter === 1 ? "" : currentCounter}`).textContent = "---";
-      document.getElementById(`personName${currentCounter === 1 ? "" : currentCounter}`).textContent = "---";
-    });
+    .catch(() => updatePersonDisplay({ id: "---", name: "---" }));
 }
 
+// Update recognition display
+function updatePersonDisplay(data) {
+  const display = document.querySelector(
+    `#counter${currentCounter} .recognition-display`
+  );
+  if (display) {
+    display.innerHTML = `
+      <p><strong>ID:</strong> ${data.id || "---"}</p>
+      <p><strong>Name:</strong> ${data.name || "---"}</p>
+    `;
+  }
+}
+
+// -------------------- BARCODE SCANNING --------------------
 function scanBarcode() {
-  // Switch to barcode scanning mode
-  showCounter(1, "barcode");
-  
-  // Start checking for barcode results
-  const barcodeCheckInterval = setInterval(() => {
-    fetch('/recognition/2')  // Use counter 2 which handles barcode
-      .then(res => res.json())
-      .then(data => {
-        if (data.id && data.id !== "---") {
-          barcodeId = data.id;
-          clearInterval(barcodeCheckInterval);
-          verifyIdentity();
-        }
-      });
-  }, 1000);
+  const button = document.getElementById("barcodeBtn");
+
+  if (currentMode === "face") {
+    // Switch to barcode scanning
+    showCounter(1, "barcode");
+    button.textContent = "Scan Face";
+
+    const barcodeCheckInterval = setInterval(() => {
+      fetch("/recognition/1?mode=barcode")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.id && data.id !== "---") {
+            barcodeId = data.id;
+            clearInterval(barcodeCheckInterval);
+            verifyIdentity();
+          }
+        });
+    }, 1000);
+  } else {
+    // Back to face mode
+    showCounter(1, "face");
+    button.textContent = "Scan Barcode";
+  }
 }
 
+// -------------------- IDENTITY VERIFICATION --------------------
 function verifyIdentity() {
   fetch("/verify-identity", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ face_id: faceId, barcode_id: barcodeId })
+    body: JSON.stringify({ face_id: faceId, barcode_id: barcodeId }),
   })
-  .then(res => res.json())
-  .then(data => {
-    const modal = document.getElementById("verificationModal");
-    const resultDiv = document.getElementById("verificationResult");
-    const qrDiv = document.getElementById("qrDisplay");
-    
-    if (data.status === "success") {
-      resultDiv.innerHTML = '<p class="success">${data.message}</p>';
-      qrDiv.classList.remove("hidden");
-      showQRCode(data.id);
-      startCountdown();
-      
-      // Send email with QR code
-      sendEmailWithQR(data.id, data.name);
-    } else {
-      resultDiv.innerHTML = '<p class="error">${data.message}</p>';
-      qrDiv.classList.add("hidden");
-    }
-    
-    modal.classList.remove("hidden");
-  })
-  .catch(error => {
-    console.error("Verification error:", error);
-  });
+    .then((res) => res.json())
+    .then((data) => {
+      const modal = document.getElementById("verificationModal");
+      const resultDiv = document.getElementById("verificationResult");
+      const qrDiv = document.getElementById("qrDisplay");
+
+      if (data.status === "success") {
+        resultDiv.innerHTML = `<p class="success">${data.message}</p>`;
+        qrDiv.classList.remove("hidden");
+        showQRCode(data.id);
+        startCountdown();
+        sendEmailWithQR(data.id, data.name);
+      } else {
+        resultDiv.innerHTML = `<p class="error">${data.message}</p>`;
+        qrDiv.classList.add("hidden");
+      }
+
+      modal.classList.remove("hidden");
+    })
+    .catch((error) => console.error("Verification error:", error));
 }
 
-// Add this function to add to queue (for counter 2)
+// -------------------- QUEUE --------------------
 function addToQueue(qrId) {
   fetch("/add-to-queue", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ qr_id: qrId })
+    body: JSON.stringify({ qr_id: qrId }),
   })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === "success") {
-      // Update queue display
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("Queue update:", data);
       updateQueueDisplay();
-    } else {
-      console.error("Failed to add to queue:", data.message);
-    }
-  })
-  .catch(error => {
-    console.error("Queue error:", error);
-  });
-}
-
-// Add this function to update queue display
-function updateQueueDisplay() {
-  fetch("/get-queue")
-    .then(res => res.json())
-    .then(data => {
-      const queueList = document.getElementById("queueList");
-      queueList.innerHTML = "";
-      
-      data.forEach(person => {
-        const li = document.createElement("li");
-        li.textContent = `${person.name} (${person.id}) - ${person.is_current === "Y" ? "Current" : "Waiting"}`;
-        queueList.appendChild(li);
-      });
-      
-      // Show queue display on counter 3
-      if (currentCounter === 3) {
-        document.getElementById("queueDisplay").classList.remove("hidden");
-      }
     });
 }
 
-// Add this function for countdown
+function updateQueueDisplay() {
+  fetch("/get-queue")
+    .then((res) => res.json())
+    .then((queue) => {
+      const container = document.querySelector("#counter3 .queue-display");
+      if (!container) return;
+
+      container.innerHTML = queue
+        .map(
+          (person, idx) => `
+          <div class="queue-person ${person.is_current === "Y" ? "current" : ""}">
+            <span>${idx + 1}. ${person.name} (${person.id})</span>
+          </div>
+        `
+        )
+        .join("");
+    });
+}
+
+// -------------------- VERIFICATION COUNTDOWN --------------------
 function startCountdown() {
   let seconds = 10;
   const countdownElement = document.getElementById("countdown");
   countdownElement.textContent = seconds;
-  
+
   verificationTimeout = setInterval(() => {
     seconds--;
     countdownElement.textContent = seconds;
-    
+
     if (seconds <= 0) {
       clearInterval(verificationTimeout);
       document.getElementById("verificationModal").classList.add("hidden");
-      // Reset and switch back to face recognition
       resetScan();
       showCounter(1, "face");
     }
   }, 1000);
 }
 
-// Add this function to reset scan
 function resetScan() {
-  fetch("/reset-scan")
-    .then(() => {
-      faceId = "---";
-      barcodeId = "---";
-      document.getElementById("barcodeBtn").disabled = true;
-    });
+  fetch("/reset-scan").then(() => {
+    faceId = "---";
+    barcodeId = "---";
+    document.getElementById("barcodeBtn").disabled = true;
+    document.getElementById("barcodeBtn").textContent = "Scan Barcode";
+    currentMode = "face";
+  });
 }
 
-// Add this function to send email with QR code
+// -------------------- EMAIL --------------------
 function sendEmailWithQR(studentId, studentName) {
-  // You'll need to implement this based on your email service
   console.log(`Sending email to ${studentName} with QR code for ID: ${studentId}`);
-  // Implementation will depend on your email service
 }
-
-// Add modal close functionality
-document.addEventListener('DOMContentLoaded', function() {
-  const modal = document.getElementById("verificationModal");
-  const span = document.getElementsByClassName("close")[0];
-  
-  span.onclick = function() {
-    modal.classList.add("hidden");
-    if (verificationTimeout) clearInterval(verificationTimeout);
-    resetScan();
-    showCounter(1, "face");
-  }
-  
-  // Initialize queue display
-  updateQueueDisplay();
-});
 
 function sendEmail() {
   fetch("/send-graduation-emails", { method: "POST" })
-    .then(res => res.json())
-    .then(data => alert(data.message))
+    .then((res) => res.json())
+    .then((data) => alert(data.message))
     .catch(() => alert("Failed to send graduation emails!"));
 }
+
+setInterval(updateRecognition, 3000);

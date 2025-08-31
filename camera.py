@@ -27,20 +27,26 @@ class CameraStream:
                 self.cap.release()
             except:
                 pass
-        
-        self.cap = cv.VideoCapture(self.src, cv.CAP_DSHOW)
-        if self.width is not None:
-            self.cap.set(cv.CAP_PROP_FRAME_WIDTH, self.width)
-        if self.height is not None:
-            self.cap.set(cv.CAP_PROP_FRAME_HEIGHT, self.height)
-        
-        # Test if camera is working
-        if self.cap.isOpened():
-            ret, test_frame = self.cap.read()
-            if not ret:
-                logger.warning("Camera initialized but cannot read frames")
-        else:
-            logger.error("Failed to initialize camera")
+
+        backends = [cv.CAP_DSHOW, cv.CAP_MSMF, cv.CAP_ANY]
+        for backend in backends:
+            cap = cv.VideoCapture(self.src, backend)
+            if cap.isOpened():
+                ret, test_frame = cap.read()
+                if ret:
+                    self.cap = cap
+                    if self.width is not None:
+                        self.cap.set(cv.CAP_PROP_FRAME_WIDTH, self.width)
+                    if self.height is not None:
+                        self.cap.set(cv.CAP_PROP_FRAME_HEIGHT, self.height)
+                    logger.info(f"Camera initialized at src={self.src} using backend={backend}")
+                    return
+                else:
+                    logger.warning(f"Camera opened with backend={backend} but cannot read frames")
+                    cap.release()
+
+        logger.error(f"Failed to initialize camera at index {self.src}")
+        self.cap = None
 
     def start(self):
         if self.running:
