@@ -5,17 +5,15 @@ import pandas as pd
 from barcode.writer import ImageWriter
 from huggingface_hub import Repository
 
-def generate_and_push_barcodes(
+def generate_barcodes(
     dataset_path="dataset/dataset.csv",
-    repo_id="jesmine0820/assignment-barcode-generated",
-    local_dir="temp_barcode_repo"
+    output_dir="database/barcode_generated"
 ):
-    
     # Load dataset
     df = pd.read_csv(dataset_path)
 
-    # Local directory
-    os.makedirs(local_dir, exist_ok=True)
+    # Create output directory if not exists
+    os.makedirs(output_dir, exist_ok=True)
 
     # Barcode class
     Code128 = barcode.get_barcode_class("code128")
@@ -25,18 +23,13 @@ def generate_and_push_barcodes(
         student_id = str(student["StudentID"])
         name = student["Name"].replace(" ", "_")
 
-        # Instantiate the barcode with data
+        # Generate barcode
         code128 = Code128(student_id, writer=ImageWriter())
 
-        # Save barcode PNG into repo folder
-        filename = os.path.join(local_dir, f"{student_id}_{name}")
+        # Save barcode PNG into output folder
+        filename = os.path.join(output_dir, f"{student_id}_{name}")
         code128.save(filename)
         count += 1
-
-    # --- Push to Hugging Face Hub ---
-    repo = Repository(local_dir, clone_from=repo_id, use_auth_token=True)
-    repo.push_to_hub(commit_message=f"Added {count} barcodes")
-
 # ------------------------ Database ------------------------
 DB_FILE = "database/recognized_people.db"
 os.makedirs("database", exist_ok=True)

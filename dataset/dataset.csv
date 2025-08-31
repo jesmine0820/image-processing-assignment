@@ -1,4 +1,4 @@
-Name,StudentID,Faculty,Course,CGPA
+Name,StudentID,Faculty,Course,CGPA,email
 Ao Rui Peng,24WMR08824,FOBE,Bachelor in Data Science (Honours),4
 Bai Lu,24WMR08828,FCCI,Bachelor of Hospitality and Catering Management (Honours),4
 Cai Jin Xin,24WMC08813,FCCI,Diploma in Banking and Finance,4
@@ -16,7 +16,7 @@ He Jun Lin ,24WMH08805,FSSH,Bachelor of Arts in English Studies (Honours),2.95
 Hou Ming Hao,24WMR08840,FSSH,Diploma in Banking and Finance,2.5
 Hu Yi Tian,24WMR08844,FOBE,Diploma in Banking and Finance,2.5
 Jackson Yee Yang Qian Xi,24WMH08808,FSSH,Bachelor of Arts (Honours) English with Drama,2.8
-Jesmine Tey Khai Jing ,24WMR08866,FOCS,Bachelor in Data Science (Honours),4
+Jesmine Tey Khai Jing ,24WMR08866,FOCS,Bachelor in Data Science (Honours),4,jesminetkj-wm22@student.tarc.edu.my
 Kang Woo Jin,24WMC08809,FCCI,Bachelor of Hospitality and Catering Management (Honours),2.5
 Karry Wang Jun Kai,24WMH08807,FSSH,Bachelor of Tourism Management (Honours) Event Management,3.6
 Kim Jun Seo,24WMC08816,FCCI,Diploma in Banking and Finance,3.5
