@@ -101,6 +101,47 @@ body {
     background: #007bff;
 }
 
+/* Model Selection Styles */
+.model-selection {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+.model-selection h3 {
+  margin: 10px 0 5px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.model-selection select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  margin-bottom: 15px;
+}
+
+.save-status {
+  height: 20px;
+  font-size: 12px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.save-status.success {
+  color: green;
+}
+
+.save-status.error {
+  color: red;
+}
+
+.setting-button {
+  display: none;
+}
 
 /* Camera Section */
 .camera {

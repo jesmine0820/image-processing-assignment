@@ -1,22 +1,15 @@
 # Import necessary libraries
 import cv2 as cv
 import pickle
-import time
 import numpy as np
-from camera import CameraStream
 from insightface.app import FaceAnalysis
-from huggingface_hub import hf_hub_download
 
 # Initializer
-detector = FaceAnalysis(name="buffalo_l", providers=['CUDAExecutionProvider'])
+detector = FaceAnalysis(name="buffalo_l", providers=['CPUExecutionProvider'])
 detector.prepare(ctx_id=0, det_size=(640, 640), det_thresh=0.5)
 
 # Load saved embeddings
-file_path = hf_hub_download(
-    repo_id="jesmine0820/assignment_face_recognition",   
-    filename="face_embeddings.pkl",  
-    repo_type="dataset"
-)
+file_path = "database/face_embeddings.pkl"
 with open(file_path, "rb") as f:
     embeddings_data = pickle.load(f)
 
@@ -116,74 +109,3 @@ def draw_result(image, name, score):
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
     return image
 
-def real_time_pipeline(camera: CameraStream, latest_recognition, counter=1):
-    current_person = None
-    start_time = None
-
-    while True:
-        frame = camera.get_frame()
-        if frame is None:
-            time.sleep(0.01)
-            continue
-
-        person_id, name = None, None
-
-        frame = cv.flip(frame, 1)
-        rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-
-        faces = detector.get(rgb_frame)
-
-        if faces:
-            # pick best face (highest det_score)
-            faces.sort(key=lambda f: f.det_score, reverse=True)
-            best_face = faces[0]
-
-            # face quality filtering
-            if best_face.det_score < 0.6:
-                continue
-            if (best_face.bbox[2] - best_face.bbox[0]) < 80:
-                continue
-
-            # get embedding
-            embedding = get_face_embedding_from_obj(best_face)
-
-            # recognize
-            person_id, name, score = recognize_face(embedding, embeddings_data)
-
-            # smooth results
-            smoother.add_recognition(person_id, score)
-            smoothed_id, smoothed_score = smoother.get_smoothed_result()
-
-            # draw
-            frame = draw_result(frame, name, smoothed_score)
-
-            # stable detection for 5s
-            if smoothed_id == current_person:
-                if start_time and (time.time() - start_time >= 5):
-                    print(f"Detected id: {smoothed_id}, Score: {smoothed_score}")
-                    start_time = None
-            else:
-                current_person = smoothed_id
-                start_time = time.time()
-
-        latest_recognition[counter] = {
-            "id": person_id if person_id else "---",
-            "name": name if name else "---"
-        }
-        
-        # draw middle guide box
-        h, w, _ = frame.shape
-        rect_w, rect_h = 200, 200
-        center_x, center_y = w // 2, h // 2
-        top_left = (center_x - rect_w // 2, center_y - rect_h // 2)
-        bottom_right = (center_x + rect_w // 2, center_y + rect_h // 2)
-        cv.rectangle(frame, top_left, bottom_right, (255, 0, 0), 2)
-
-        # Encode frame as JPEG
-        ret, jpeg = cv.imencode('.jpg', frame)
-        if not ret:
-            continue
-
-        # Yield frame in Flask streaming format
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')

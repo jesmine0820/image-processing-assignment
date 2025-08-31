@@ -12,17 +12,32 @@
         <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
         <h2 class="logo-text">FaceCert</h2>
       </div>
+      
       <div class="counter-buttons">
         <button onclick="showCounter(1)">Counter 1</button>
         <button onclick="showCounter(2)">Counter 2</button>
         <button onclick="showCounter(3)">Counter 3</button>
       </div>
-      <div class="setting-button">
-        <div class="setting-container">
-          <img class="setting" src="{{ url_for('static', filename='images/setting.png') }}" alt="Setting">
-          <button onclick="">Setting</button>
-        </div>
+      
+      <!-- Model Selection Section -->
+      <div class="model-selection">
+        <h3>Face Recognition Model</h3>
+        <select id="face-recognition" onchange="saveSettings()">
+          <option value="insightFace">InsightFace</option>
+          <option value="mtcnn_facenet">MTCNN with FaceNet</option>
+        </select>
+        
+        <h3>Barcode Detection Model</h3>
+        <select id="barcode-detection" onchange="saveSettings()">
+          <option value="zxing">ZXingCpp</option>
+          <option value="pyzbar">ZBar</option>
+        </select>
+        
+        <div id="save-status" class="save-status"></div>
       </div>
+
+
+      
     </div>
 
     <!-- Camera field -->
@@ -33,7 +48,7 @@
           <h2>Counter 1</h2>
           <div class="counter-layout">
             <div class="camera-feed">
-              <img alt="Camera 1">
+              <img src="" alt="Camera 1">
             </div>
             <div class="scanner-section">
               <div class="barcode-scanner">
@@ -56,7 +71,7 @@
           <h2>Counter 2</h2>
           <div class="counter-layout">
             <div class="camera-feed">
-              <img alt="Camera 2">
+              <img src="" alt="Camera 2">
             </div>
             <div class="person-image">
               <img src="" alt="People">
@@ -76,48 +91,17 @@
           <h2>Counter 3</h2>
           <div class="camera-half">
             <div class="camera-feed">
-              <img alt="Camera 3">
+              <img src="" alt="Camera 3">
             </div>
           </div>
           <div class="text-input">
             <h3>Candidate</h3>
             <p><strong>Current: </strong> <span id="currentPerson">---</span></p>
             <p><strong>Next: </strong>  <span id="nextPerson">---</span></p>
+            <button onclick="resetScan()">Reset Scan</button>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Setting popup--> 
-  <div id="settingModel" class="popup hidden"> 
-    <div class="popup-content"> 
-      <h3>Choose Face Recognition Model</h3> 
-      <div class="face-recognition-model"> 
-        <label for="face-recognition">Model:</label> 
-        <select id="face-recognition"> 
-          <option value="insightFace">InsightFace</option> 
-          <option value="mtcnn_facenet">MTCNN with FaceNet</option> 
-        </select> </div> h3>Choose Barcode Detection Model</h3> 
-        <div class="barcode-detection-model"> 
-          <label for="barcode-detection">Model:</label> 
-          <select id="barcode-detection"> 
-            <option value="zxing">ZXingCpp</option> 
-            <option value="pyzbar">ZBar</option> 
-          </select> 
-        </div> 
-        <div class="save-cancel-button"> 
-          <button id="cancelSetting">Cancel</button> 
-          <button id="saveSetting">Save</button> 
-        </div> 
-      </div> 
-    </div>
-
-  <!-- Popup modal -->
-  <div id="popupModel" class="popup">
-    <div class="popup-content">
-      <h3>Candidate's Token</h3>
-      <button>Get</button>
     </div>
   </div>
 
