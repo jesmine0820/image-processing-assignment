@@ -1,47 +1,44 @@
+import os
 import sqlite3
 import pandas as pd
 from flask import (
     Flask, Response,
     render_template, jsonify,
-    request, session
+    request, session, send_from_directory
 )
 
-# --- Local Module
-from database import create_recog_db, generate_barcodes
+# --- Local modules ---
+from database import create_recog_db, set_attendance, has_attendance_yes
 from camera import CameraStream
 from tracking import track_person
 from face_recognition import real_time_pipeline, real_time
 from barcode_detection import (
     scan_barcode_generator, scan_qr_code_generator,
     scan_barcode_py_generator, zbar_scan_qrcode_generator,
-    get_latest_scan_result, reset_scan_result
+    generate_qr_code
 )
-from gmail import send_graduation_tickets
+from gmail import send_graduation_tickets, send_qrcode
+from tts import speak   # ✅ our updated TTS
 
-# --- Flask app intializer ---
+# --- Flask app initializer ---
 app = Flask(__name__)
 app.secret_key = "image_processing_assignment"
 
-# --- Global Variable ---
+# --- Global state ---
 latest_recognition = {
     1: {"id": "---", "name": "---"},
     2: {"id": "---", "name": "---"},
     3: {"id": "---", "name": "---"}
 }
-latest_scan_result = {
-    "type": None,
-    "data": None,
-    "info": None
-}
+latest_scan_result = {"type": None, "data": None, "info": None}
 queue_list = []
-current_person_index = 0
 selected_models = {"face": "insightFace", "barcode": "zxing"}
 cameras = {}
 
-# --- Database init --- 
+# --- Init database ---
 create_recog_db()
 
-# --- Camera Handling --- 
+# Camera handling
 def get_camera(index=0):
     if index not in cameras:
         cameras[index] = CameraStream(index).start()
@@ -52,35 +49,53 @@ def release_all_cameras():
         cam.stop()
         del cameras[idx]
 
-# --- Route ---
-# Start app
+# --- Routes ---
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# Update recognized people
+@app.route("/photos/<filename>")
+def serve_photo(filename):
+    """Serve photos from /photos directory"""
+    try:
+        return send_from_directory("photos", filename)
+    except FileNotFoundError:
+        return send_from_directory("static/images", "logo.png")
+
 @app.route("/recognition/<int:counter>")
 def recognition(counter):
+    """
+    Returns recognition results depending on counter:
+    - Counter 1 → face or barcode
+    - Counter 2 → ONLY return details if a QR code was scanned
+    - Counter 3 → queue display only
+    """
     mode = request.args.get("mode", "face")
 
     if counter == 1:
         if mode == "face":
-            return latest_recognition.get(1, {"id": "---", "name": "---"})
-        else:
-            if latest_scan_result and latest_scan_result.get("type"):
-                return {
+            return jsonify(latest_recognition.get(1, {"id": "---", "name": "---"}))
+        else:  # barcode mode
+            if latest_scan_result and latest_scan_result.get("type") == "barcode":
+                return jsonify({
                     "id": latest_scan_result["data"],
-                    "name": latest_scan_result["info"].get("Name", "---") if latest_scan_result["info"] else "---"
-                }
-            
-    else:
-        if latest_scan_result and latest_scan_result.get("type"):
-            return {
+                    "name": latest_scan_result["info"].get("Name", "---")
+                    if latest_scan_result["info"] else "---"
+                })
+            return jsonify({"id": "---", "name": "---"})
+
+    elif counter == 2:
+        # ✅ Only show details if QR scan has been performed
+        if latest_scan_result and latest_scan_result.get("type") == "qrcode":
+            return jsonify({
                 "id": latest_scan_result["data"],
-                "name": latest_scan_result["info"].get("Name", "---") if latest_scan_result["info"] else "---"
-            }
-            
-# Video Counter
+                "name": latest_scan_result["info"].get("Name", "---")
+                if latest_scan_result["info"] else "---"
+            })
+        return jsonify({"id": "---", "name": "---"})
+
+    return jsonify({"id": "---", "name": "---"})
+
 @app.route("/video/<int:counter>")
 def video(counter):
     mode = request.args.get("mode", "face")
@@ -88,24 +103,19 @@ def video(counter):
 
     if counter == 1:
         if mode == "face":
-            generator = (
-                real_time_pipeline(camera, latest_recognition)
-                if selected_models["face"] == "insightFace"
-                else real_time(camera, latest_recognition)
-            )
-        else:  # barcode
-            generator = (
-                scan_barcode_generator(camera, latest_scan_result)
-                if selected_models["barcode"] == "zxing"
-                else scan_barcode_py_generator(camera, latest_scan_result)
-            )
+            generator = (real_time_pipeline(camera, latest_recognition)
+                         if selected_models["face"] == "insightFace"
+                         else real_time(camera, latest_recognition))
+        else:
+            generator = (scan_barcode_generator(camera, latest_scan_result)
+                         if selected_models["barcode"] == "zxing"
+                         else scan_barcode_py_generator(camera, latest_scan_result))
 
     elif counter == 2:
-        generator = (
-            scan_qr_code_generator(camera, latest_scan_result)
-            if selected_models["barcode"] == "zxing"
-            else zbar_scan_qrcode_generator(camera, latest_scan_result)
-        )
+        # ✅ QR code scan only at counter 2
+        generator = (scan_qr_code_generator(camera, latest_scan_result)
+                     if selected_models["barcode"] == "zxing"
+                     else zbar_scan_qrcode_generator(camera, latest_scan_result))
 
     elif counter == 3:
         generator = track_person(camera)
@@ -128,17 +138,16 @@ def save_settings():
 
 @app.route("/reset-scan")
 def reset_scan():
-    reset_scan_result()
+    latest_scan_result.clear()
+    latest_scan_result.update({"type": None, "data": None, "info": None})
     return jsonify({"status": "reset"})
 
 @app.route("/send-graduation-emails", methods=["POST"])
 def send_graduation_emails():
     try:
-        generate_barcodes()
         send_graduation_tickets()
         return jsonify({"message": "Graduation emails sent successfully!"})
     except Exception as e:
-        print("[ERROR] send_graduation_emails:", e)
         return jsonify({"message": f"Failed to send emails: {str(e)}"}), 500
 
 @app.route("/verify-identity", methods=["POST"])
@@ -149,7 +158,6 @@ def verify_identity():
 
         if not (face_id and barcode_id):
             return jsonify({"status": "error", "message": "Missing IDs"}), 400
-
         if face_id != barcode_id:
             return jsonify({"status": "error", "message": "Face ID and Barcode ID do not match"}), 400
 
@@ -167,24 +175,32 @@ def verify_identity():
             if not person_info.empty:
                 name = person_info.iloc[0]["Name"]
                 cursor.execute(
-                    "INSERT INTO recognized_people (person_id, name, counter_id) VALUES (?, ?, ?)",
-                    (face_id, name, "1")
+                    "INSERT INTO recognized_people (person_id, name, attendance) VALUES (?, ?, ?)",
+                    (face_id, name, "Y")
                 )
                 conn.commit()
                 conn.close()
+
+                # Generate QR + email
+                info = {"StudentID": face_id,
+                        "Name": name,
+                        "Faculty": person_info.iloc[0].get("Faculty", ""),
+                        "CGPA": person_info.iloc[0].get("CGPA", "")}
+                generate_qr_code(face_id, info)
+                send_qrcode(face_id)
+
                 return jsonify({
                     "status": "success",
-                    "message": "Identity verified successfully",
                     "id": face_id,
-                    "name": name
+                    "name": name,
+                    "message": "Attendance recorded and QR code emailed!"
                 })
 
         conn.close()
         return jsonify({"status": "error", "message": "Already registered or not found"}), 400
 
     except Exception as e:
-        print(f"[ERROR] verify_identity: {e}")
-        return jsonify({"status": "error", "message": "Server error"}), 500
+        return jsonify({"status": "error", "message": f"Server error: {e}"}), 500
 
 @app.route("/add-to-queue", methods=["POST"])
 def add_to_queue():
@@ -198,16 +214,17 @@ def add_to_queue():
         dataset_df = pd.read_csv("dataset/dataset.csv")
         person_info = dataset_df[dataset_df["StudentID"] == qr_id]
 
-        if not person_info.empty:
+        if not person_info.empty and has_attendance_yes(qr_id):
             name = person_info.iloc[0]["Name"]
-            queue_list.append({"id": qr_id, "name": name, "is_current": "N"})
-            return jsonify({"status": "success", "message": "Added to queue", "id": qr_id, "name": name})
+            has_current = any(p.get("is_current") == "Y" for p in queue_list)
+            is_current_flag = "Y" if not has_current else "N"
+            queue_list.append({"id": qr_id, "name": name, "is_current": is_current_flag})
+            return jsonify({"status": "success", "id": qr_id, "name": name})
 
-        return jsonify({"status": "error", "message": "Person not found"}), 400
+        return jsonify({"status": "error", "message": "Invalid QR or attendance not confirmed"}), 400
 
     except Exception as e:
-        print(f"[ERROR] add_to_queue: {e}")
-        return jsonify({"status": "error", "message": "Server error"}), 500
+        return jsonify({"status": "error", "message": f"Server error: {e}"}), 500
 
 @app.route("/get-queue")
 def get_queue():
@@ -216,38 +233,44 @@ def get_queue():
 @app.route("/update-current-person", methods=["POST"])
 def update_current_person():
     try:
-        global current_person_index
-        for i, person in enumerate(queue_list):
-            if person["is_current"] == "N":
-                queue_list[i]["is_current"] = "Y"
-                current_person_index = i
-                return jsonify({"status": "success", "person": person})
+        if not queue_list:
+            # Instead of error, just return gracefully if empty
+            return jsonify({"status": "error", "message": "Queue is empty"}), 200
 
-        return jsonify({"status": "error", "message": "No more people in queue"}), 400
+        current_index = next((i for i, p in enumerate(queue_list) if p["is_current"] == "Y"), -1)
+
+        if current_index == -1:
+            queue_list[0]["is_current"] = "Y"
+            speak(queue_list[0]["id"])  # 🔊 announce first person
+            return jsonify({"status": "success", "person": queue_list[0], "more_people": len(queue_list) > 1})
+
+        elif current_index + 1 < len(queue_list):
+            queue_list[current_index]["is_current"] = "N"
+            queue_list[current_index + 1]["is_current"] = "Y"
+            speak(queue_list[current_index + 1]["id"])  # 🔊 announce next person
+            return jsonify({"status": "success", "person": queue_list[current_index + 1], "more_people": current_index + 2 < len(queue_list)})
+
+        else:
+            # ✅ If last person, still speak once
+            speak(queue_list[current_index]["id"])
+            return jsonify({"status": "success", "person": queue_list[current_index], "more_people": False})
 
     except Exception as e:
-        print(f"[ERROR] update_current_person: {e}")
-        return jsonify({"status": "error", "message": "Server error"}), 500
+        return jsonify({"status": "error", "message": f"Server error: {e}"}), 500
+
 
 @app.route("/mark-person-done", methods=["POST"])
 def mark_person_done():
     try:
-        global current_person_index
-        if queue_list and current_person_index < len(queue_list):
-            queue_list.pop(current_person_index)
+        if queue_list:
+            queue_list.pop(0)
             if queue_list:
-                current_person_index = 0
                 queue_list[0]["is_current"] = "Y"
-            else:
-                current_person_index = 0
+                speak(queue_list[0]["id"])  # 🔊 auto announce promoted person
             return jsonify({"status": "success", "message": "Person marked as done"})
-        return jsonify({"status": "error", "message": "No current person"}), 400
+        return jsonify({"status": "error", "message": "Queue empty"}), 200
 
     except Exception as e:
-        print(f"[ERROR] mark_person_done: {e}")
-        return jsonify({"status": "error", "message": "Server error"}), 500
-
-
-# --- App entry ---
+        return jsonify({"status": "error", "message": f"Server error: {e}"}), 500
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)

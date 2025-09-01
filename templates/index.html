@@ -17,9 +17,9 @@
       
       <!-- Counter -->
       <div class="counter-buttons">
-        <button onclick="showCounter(1)">Counter 1</button>
-        <button onclick="showCounter(2)">Counter 2</button>
-        <button onclick="showCounter(3)">Counter 3</button>
+        <button onclick="showCounter(1, 'face')">Counter 1</button>
+        <button onclick="showCounter(2, 'barcode')">Counter 2</button>
+        <button onclick="showCounter(3, 'track')">Counter 3</button>
       </div>
       
       <!-- Model Selection Section -->
@@ -76,16 +76,21 @@
         <div class="counter-frame">
           <h2>Counter 2</h2>
           <div class="counter-layout">
+            <!-- Left side: camera feed -->
             <div class="camera-feed">
               <img src="" alt="Camera 2">
             </div>
-            <div class="person-image">
-              <img src="" alt="People">
-            </div>
-            <div class="person-info">
-              <h3>Person Info</h3>
-              <p><strong>ID: </strong> <span id="personId2">---</span></p>
-              <p><strong>Name: </strong> <span id="personName2">---</span></p>
+            <!-- Right side: person details -->
+            <div class="person-section">
+              <div class="person-image">
+                <img id="personPhoto" src="" alt="Person Photo">
+              </div>
+              <div class="person-info">
+                <h3>Person Info</h3>
+                <p><strong>ID: </strong> <span id="personId2">---</span></p>
+                <p><strong>Name: </strong> <span id="personName2">---</span></p>
+                <button onclick="clearCounter2Display()" class="clear-btn">Clear Display</button>
+              </div>
             </div>
           </div>
         </div>
@@ -96,23 +101,31 @@
         <div class="counter-frame">
           <h2>Counter 3</h2>
           <div class="counter-layout">
-            <div class="camera-half">
+            <!-- Left: camera feed -->
+            <div class="camera-feed">
               <img src="" alt="Camera 3">
             </div>
-            <div id="queueDisplay" class="queue-display hidden">
-              <h3>Queue List</h3>
-              <ul id="queueList"></ul>
-            </div>
-            <div class="text-input">
-              <h3>Candidate</h3>
-              <p><strong>Current: </strong> <span id="currentPerson">---</span></p>
-              <p><strong>Next: </strong> <span id="nextPerson">---</span></p>
+            <!-- Right: queue + candidate -->
+            <div class="queue-section">
+              <div class="queue-display">
+                <h3>Queue List</h3>
+                <ul id="queueList"></ul>
+                <div class="tracking-controls">
+                  <button id="startButton" class="btn btn-green" onclick="startTracking()">Start</button>
+                  <button id="stopButton" class="btn btn-red" onclick="stopTracking()">Stop</button>
+                  <button id="resumeButton" class="btn btn-blue" onclick="resumeTracking()">Resume</button>
+                  <button class="btn btn-gray" onclick="checkQueue()">Check Queue</button>
+                </div>  
+              </div>
+              <div class="text-input">
+                <h3>Candidate</h3>
+                <p><strong>Current: </strong> <span id="currentPerson">---</span></p>
+                <p><strong>Next: </strong> <span id="nextPerson">---</span></p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
   <!-- QR Code Popup -->
   <div id="qrPopup" class="qr-popup hidden">
@@ -133,9 +146,8 @@
   </div>
 
   <!-- Success message -->
-  <div id="successMessage" class="success hidden">
-    <p>Successfully processed! Enjoy your graduation!</p>
-    <p>Moving to next person...</p>
+  <div id="successMessage" class="hidden success-banner">
+    🎉 QR Code Generated and Email Sent Successfully!
   </div>
 
   <script src="{{ url_for('static', filename='js/script.js') }}"></script>

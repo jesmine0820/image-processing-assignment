@@ -3,6 +3,7 @@ import cv2 as cv
 import torch
 from ultralytics import YOLO
 from deep_sort_realtime.deepsort_tracker import DeepSort
+import requests
 
 from camera import CameraStream
 
@@ -110,7 +111,20 @@ def track_person(camera: CameraStream, threshold=0.4):
 
                 if start_x > 0.7 * w and last_x < 0.3 * w:
                     print("Next person crossed (Right -> Left)")
+                    # Advance queue on the server
+                    try:
+                        requests.post("http://127.0.0.1:5000/mark-person-done", timeout=0.5)
+                        requests.post("http://127.0.0.1:5000/update-current-person", timeout=0.5)
+                    except Exception:
+                        pass
                     track_positions.pop(track_id)
+
+        # Show start button when people are detected
+        if len(tracks) > 0:
+            try:
+                requests.post("http://127.0.0.1:5000/check-people-detected", timeout=0.1)
+            except Exception:
+                pass
 
         # FPS display
         dt = time.time() - t0

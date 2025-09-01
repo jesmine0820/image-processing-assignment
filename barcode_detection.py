@@ -80,12 +80,13 @@ def scan_barcode_generator(camera: CameraStream, latest_scan_result):
                 display_name = info['Name']
                 display_id = student_id
                 valid_student = True
-
-                latest_scan_result = {
-                    "type": "barcode",
-                    "data": student_id,
-                    "info": info
-                }
+                if isinstance(latest_scan_result, dict):
+                    latest_scan_result.clear()
+                    latest_scan_result.update({
+                        "type": "barcode",
+                        "data": student_id,
+                        "info": info
+                    })
             else:
                 display_name = "INVALID BARCODE"
                 display_id = ""
@@ -125,7 +126,7 @@ def generate_qr_code(student_id, info):
     
     return qr_path
 
-def scan_qr_code_generator(camera):
+def scan_qr_code_generator(camera: CameraStream, latest_scan_result):
     target_w, target_h = 402, 280
 
     while True:
@@ -161,12 +162,13 @@ def scan_qr_code_generator(camera):
                 student_id = qr_data.split("ID:")[1].split("\n")[0].strip()
                 if student_id in student_dict:
                     info = student_dict[student_id]
-                    
-                    latest_scan_result = {
-                        "type": "qrcode",
-                        "data": student_id,
-                        "info": info
-                    }
+                    if isinstance(latest_scan_result, dict):
+                        latest_scan_result.clear()
+                        latest_scan_result.update({
+                            "type": "qrcode",
+                            "data": student_id,
+                            "info": info
+                        })
                     
                     # Display success message
                     cv.putText(frame, "QR CODE SCANNED SUCCESSFULLY", (50, 50),
@@ -211,12 +213,13 @@ def scan_barcode_py_generator(camera: CameraStream, latest_scan_result):
             sid = bc.data.decode("utf-8").strip()
             if sid in student_dict:
                 info = student_dict[sid]
-                
-                latest_scan_result = {
-                    "type": "barcode_py",
-                    "data": sid,
-                    "info": info
-                }
+                if isinstance(latest_scan_result, dict):
+                    latest_scan_result.clear()
+                    latest_scan_result.update({
+                        "type": "barcode_py",
+                        "data": sid,
+                        "info": info
+                    })
                 
                 # Draw bounding box and info
                 (x, y, w, h) = bc.rect
@@ -267,12 +270,13 @@ def scan_qr_py_generator(camera: CameraStream, latest_scan_result):
             sid = str(info.get("StudentID", "")).strip()
             if sid in student_dict:
                 info = student_dict[sid]
-                
-                latest_scan_result = {
-                    "type": "qrcode_py",
-                    "data": sid,
-                    "info": info
-                }
+                if isinstance(latest_scan_result, dict):
+                    latest_scan_result.clear()
+                    latest_scan_result.update({
+                        "type": "qrcode_py",
+                        "data": sid,
+                        "info": info
+                    })
                 
                 # Draw bounding box
                 if points is not None:
@@ -412,11 +416,13 @@ def zbar_scan_qrcode_generator(camera, latest_scan_result, logo_path="static/ima
                         if os.path.exists(photo_path):
                             photo_img = cv.imread(photo_path)
 
-                    latest_scan_result = {
-                        "type": "qrcode_yolo",
-                        "data": sid,
-                        "info": row
-                    }
+                    if isinstance(latest_scan_result, dict):
+                        latest_scan_result.clear()
+                        latest_scan_result.update({
+                            "type": "qrcode_yolo",
+                            "data": sid,
+                            "info": row
+                        })
                 else:
                     lines = [f"Unregistered Student ID: {sid}"]
             else:
