@@ -18,7 +18,7 @@ from barcode_detection import (
     generate_qr_code
 )
 from gmail import send_graduation_tickets, send_qrcode
-from tts import speak   # ✅ our updated TTS
+from tts import speak
 
 # --- Flask app initializer ---
 app = Flask(__name__)
@@ -85,7 +85,6 @@ def recognition(counter):
             return jsonify({"id": "---", "name": "---"})
 
     elif counter == 2:
-        # ✅ Only show details if QR scan has been performed
         if latest_scan_result and latest_scan_result.get("type") == "qrcode":
             return jsonify({
                 "id": latest_scan_result["data"],
@@ -119,7 +118,6 @@ def video(counter):
 
 
     elif counter == 2:
-        # ✅ QR code scan only at counter 2
         generator = (scan_qr_code_generator(camera, latest_scan_result)
                      if selected_models["barcode"] == "zxing"
                      else zbar_scan_qrcode_generator(camera, latest_scan_result))
@@ -241,24 +239,22 @@ def get_queue():
 def update_current_person():
     try:
         if not queue_list:
-            # Instead of error, just return gracefully if empty
             return jsonify({"status": "error", "message": "Queue is empty"}), 200
 
         current_index = next((i for i, p in enumerate(queue_list) if p["is_current"] == "Y"), -1)
 
         if current_index == -1:
             queue_list[0]["is_current"] = "Y"
-            speak(queue_list[0]["id"])  # 🔊 announce first person
+            speak(queue_list[0]["id"]) 
             return jsonify({"status": "success", "person": queue_list[0], "more_people": len(queue_list) > 1})
 
         elif current_index + 1 < len(queue_list):
             queue_list[current_index]["is_current"] = "N"
             queue_list[current_index + 1]["is_current"] = "Y"
-            speak(queue_list[current_index + 1]["id"])  # 🔊 announce next person
+            speak(queue_list[current_index + 1]["id"])
             return jsonify({"status": "success", "person": queue_list[current_index + 1], "more_people": current_index + 2 < len(queue_list)})
 
         else:
-            # ✅ If last person, still speak once
             speak(queue_list[current_index]["id"])
             return jsonify({"status": "success", "person": queue_list[current_index], "more_people": False})
 
@@ -273,7 +269,7 @@ def mark_person_done():
             queue_list.pop(0)
             if queue_list:
                 queue_list[0]["is_current"] = "Y"
-                speak(queue_list[0]["id"])  # 🔊 auto announce promoted person
+                speak(queue_list[0]["id"])
             return jsonify({"status": "success", "message": "Person marked as done"})
         return jsonify({"status": "error", "message": "Queue empty"}), 200
 

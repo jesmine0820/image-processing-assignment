@@ -61,7 +61,7 @@ def scan_barcode_generator(camera: CameraStream, latest_scan_result):
         
         # Get fresh frame for ROI
         raw_frame = camera.get_frame()
-        if raw_frame is not None:  # FIXED: Check if frame is not None instead of truthiness
+        if raw_frame is not None:
             frame[roi_y1:roi_y2, roi_x1:roi_x2] = raw_frame[roi_y1:roi_y2, roi_x1:roi_x2]
 
         # Decode barcode in ROI
@@ -149,7 +149,7 @@ def scan_qr_code_generator(camera: CameraStream, latest_scan_result):
         
         # Get fresh frame for ROI
         raw_frame = camera.get_frame()
-        if raw_frame is not None:  # FIXED: Check if frame is not None
+        if raw_frame is not None:
             frame[roi_y1:roi_y2, roi_x1:roi_x2] = raw_frame[roi_y1:roi_y2, roi_x1:roi_x2]
 
         roi = frame[roi_y1:roi_y2, roi_x1:roi_x2]
@@ -403,7 +403,6 @@ def zbar_scan_qrcode_generator(camera, latest_scan_result, logo_path="static/ima
             lines = []
             photo_img = None
 
-            # ✅ Accept both "ID" and "StudentID"
             sid = str(info.get("StudentID", "")).strip()
 
             if sid and has_id:
