@@ -8,7 +8,7 @@ from flask import (
 )
 
 # --- Local modules ---
-from database import create_recog_db, set_attendance, has_attendance_yes
+from database import create_recog_db, has_attendance_yes
 from camera import CameraStream
 from tracking import track_person
 from face_recognition import real_time_pipeline, real_time
@@ -103,13 +103,20 @@ def video(counter):
 
     if counter == 1:
         if mode == "face":
-            generator = (real_time_pipeline(camera, latest_recognition)
-                         if selected_models["face"] == "insightFace"
-                         else real_time(camera, latest_recognition))
-        else:
-            generator = (scan_barcode_generator(camera, latest_scan_result)
-                         if selected_models["barcode"] == "zxing"
-                         else scan_barcode_py_generator(camera, latest_scan_result))
+            if selected_models["face"] == "insightFace":
+                generator = real_time_pipeline(camera, latest_recognition)
+            elif selected_models["face"] == "mtcnn_facenet":
+                generator = real_time(camera, latest_recognition)
+            else:
+                generator = real_time(camera, latest_recognition)
+        else:  # barcode mode
+            if selected_models["barcode"] == "zxing":
+                generator = scan_barcode_generator(camera, latest_scan_result)
+            elif selected_models["barcode"] == "pyzbar":
+                generator = scan_barcode_py_generator(camera, latest_scan_result)
+            else:
+                generator = scan_barcode_generator(camera, latest_scan_result)
+
 
     elif counter == 2:
         # ✅ QR code scan only at counter 2

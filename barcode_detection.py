@@ -216,7 +216,7 @@ def scan_barcode_py_generator(camera: CameraStream, latest_scan_result):
                 if isinstance(latest_scan_result, dict):
                     latest_scan_result.clear()
                     latest_scan_result.update({
-                        "type": "barcode_py",
+                        "type": "barcode",
                         "data": sid,
                         "info": info
                     })
@@ -255,7 +255,7 @@ def generate_qr_py(student_id, info, qr_folder="qrcodes"):
     print(f"QR generated: {qr_file}")
     return qr_file
 
-def scan_qr_py_generator(camera: CameraStream, latest_scan_result):
+def scan_qr_code_generator(camera: CameraStream, latest_scan_result):
     detector = cv.QRCodeDetector()
 
     while True:
@@ -273,7 +273,7 @@ def scan_qr_py_generator(camera: CameraStream, latest_scan_result):
                 if isinstance(latest_scan_result, dict):
                     latest_scan_result.clear()
                     latest_scan_result.update({
-                        "type": "qrcode_py",
+                        "type": "qrcode",
                         "data": sid,
                         "info": info
                     })
@@ -366,7 +366,7 @@ def zbar_scan_qrcode_generator(camera, latest_scan_result, logo_path="static/ima
         h, w = frame.shape[:2]
         data = None
 
-        # YOLO detect QR
+        # --- YOLO detect QR ---
         results = model(frame, conf=0.25, iou=0.45, verbose=False)
         boxes = []
         if results and len(results) > 0:
@@ -379,19 +379,21 @@ def zbar_scan_qrcode_generator(camera, latest_scan_result, logo_path="static/ima
                     boxes.append((x1, y1, x2, y2, cf))
 
         if boxes:
-            x1, y1, x2, y2, cf = max(boxes, key=lambda x:x[4])
+            x1, y1, x2, y2, cf = max(boxes, key=lambda x: x[4])
             x1p, y1p = _clip(x1-8, 0, w-1), _clip(y1-8, 0, h-1)
             x2p, y2p = _clip(x2+8, 0, w-1), _clip(y2+8, 0, h-1)
             roi = frame[y1p:y2p, x1p:x2p]
-            if roi.size>0:
+            if roi.size > 0:
                 data, _, _ = detector.detectAndDecode(roi)
                 if not data:
+                    # Retry with scaled-up ROI
                     for scale in (1.5, 2.0):
                         roi_big = cv.resize(roi, None, fx=scale, fy=scale)
                         data, _, _ = detector.detectAndDecode(roi_big)
-                        if data: break
+                        if data:
+                            break
                 if data:
-                    cv.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (36,255,12), 3)
+                    cv.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (36, 255, 12), 3)
 
         if not data:
             data, _, _ = detector.detectAndDecode(frame)
@@ -400,8 +402,11 @@ def zbar_scan_qrcode_generator(camera, latest_scan_result, logo_path="static/ima
             info = parse_qr_text(data)
             lines = []
             photo_img = None
-            if has_id and "StudentID" in info:
-                sid = str(info["StudentID"]).strip()
+
+            # ✅ Accept both "ID" and "StudentID"
+            sid = str(info.get("StudentID", "")).strip()
+
+            if sid and has_id:
                 row = id_lookup.get(sid)
                 if row:
                     lines = [
@@ -416,31 +421,47 @@ def zbar_scan_qrcode_generator(camera, latest_scan_result, logo_path="static/ima
                         if os.path.exists(photo_path):
                             photo_img = cv.imread(photo_path)
 
+                    # --- Update recognition result ---
                     if isinstance(latest_scan_result, dict):
                         latest_scan_result.clear()
                         latest_scan_result.update({
-                            "type": "qrcode_yolo",
+                            "type": "qrcode",
                             "data": sid,
                             "info": row
                         })
                 else:
                     lines = [f"Unregistered Student ID: {sid}"]
             else:
-                lines = [f"{k}: {v}" for k,v in info.items()]
+                # Show raw QR contents if not matched
+                lines = [f"{k}: {v}" for k, v in info.items()]
 
             info_panel = make_info_panel(lines, photo_img, logo_img)
 
-        cam_resized = cv.resize(frame, (640,480))
-        info_resized = cv.resize(info_panel, (480,480))
+        # --- Combine camera + info panel ---
+        cam_resized = cv.resize(frame, (640, 480))
+        info_resized = cv.resize(info_panel, (480, 480))
         combined = np.hstack((cam_resized, info_resized))
 
         # Encode as JPEG
         ret, buffer = cv.imencode('.jpg', combined)
         if ret:
-            frame_bytes = buffer.tobytes()
             yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
         else:
-            # If encoding fails, yield an empty frame
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + b'\r\n')
+
+def parse_qr_text(qr_text: str) -> dict:
+    info = {}
+    for line in str(qr_text).splitlines():
+        m = re.match(r"\s*([^:]+)\s*:\s*(.*)\s*$", line)
+        if m:
+            key = m.group(1).strip()
+            val = m.group(2).strip()
+            info[key] = val
+
+    # Normalize: allow both "ID" and "StudentID"
+    if "ID" in info and "StudentID" not in info:
+        info["StudentID"] = info["ID"]
+
+    return info

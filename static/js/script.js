@@ -4,8 +4,8 @@ let faceId = "---";
 let barcodeId = "---";
 let queue_list = [];
 let verificationTimeout;
-let clearTimeoutHandle = null; // for counter2 auto-clear
-let displayedCounter2Id = null; // current displayed ID on counter2
+let clearTimeoutHandle = null;
+let displayedCounter2Id = null;
 
 // DOM refs
 let barcodeBtn, resultDiv, qrDiv, countdownElement;
@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(updateRecognition, 3000);
 });
 
+/* ---------------- COUNTER HANDLING ---------------- */
 function showCounter(counterNum, mode = "face") {
   if (counterNum === 2) {
     clearCounter2Display();
@@ -85,6 +86,7 @@ function updatePersonDisplay(data) {
   }
 }
 
+/* ---------------- BARCODE + FACE VERIFICATION ---------------- */
 function scanBarcode() {
   if (currentMode === "face") {
     showCounter(1, "barcode");
@@ -131,6 +133,7 @@ function verifyIdentity() {
     });
 }
 
+/* ---------------- COUNTER 2 DISPLAY ---------------- */
 function displayPersonPhoto(personId) {
   const photoEl = document.getElementById("personPhoto");
   if (!photoEl) return;
@@ -151,75 +154,6 @@ function clearCounter2Display() {
     clearTimeoutHandle = null;
   }
 }
-
-function updateQueueDisplay() {
-  fetch("/get-queue")
-    .then((res) => res.json())
-    .then((queue) => {
-      queue_list = queue || [];
-      const list = document.getElementById("queueList");
-      if (!list) return;
-
-      list.innerHTML = queue
-        .map(
-          (p, i) =>
-            `<li class="${p.is_current === "Y" ? "current" : ""}">
-               ${i + 1}. ${p.name} (${p.id})
-             </li>`
-        )
-        .join("");
-
-      // ✅ Always keep buttons visible
-      document.getElementById("startButton").style.display = "block";
-      document.getElementById("stopButton").style.display = "block";
-      document.getElementById("resumeButton").style.display = "block";
-
-      updateCurrentPersonDisplay();
-    })
-    .catch((err) => console.error("updateQueueDisplay error:", err));
-}
-
-function updateCurrentPersonDisplay() {
-  const currentSpan = document.getElementById("currentPerson");
-  const nextSpan = document.getElementById("nextPerson");
-
-  if (!queue_list || queue_list.length === 0) {
-    if (currentSpan) currentSpan.textContent = "---";
-    if (nextSpan) nextSpan.textContent = "---";
-    return;
-  }
-
-  const currentIndex = queue_list.findIndex((p) => p.is_current === "Y");
-  if (currentIndex !== -1) {
-    const currentPerson = queue_list[currentIndex];
-    if (currentSpan) currentSpan.textContent = `${currentPerson.name} (${currentPerson.id})`;
-
-    const nextPerson = queue_list[currentIndex + 1];
-    if (nextSpan) nextSpan.textContent = nextPerson ? `${nextPerson.name} (${nextPerson.id})` : "No more people";
-  } else {
-    if (currentSpan) currentSpan.textContent = "---";
-    const nextPerson = queue_list[0];
-    if (nextSpan) nextSpan.textContent = nextPerson ? `${nextPerson.name} (${nextPerson.id})` : "---";
-  }
-}
-
-function startTracking() {
-  fetch("/update-current-person", { method: "POST" })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.status === "success") {
-        updateQueueDisplay();
-      } else {
-        // ✅ No alert popup anymore
-        console.warn("Queue message:", data.message);
-        updateQueueDisplay();
-      }
-    })
-    .catch((err) => {
-      console.error("startTracking error:", err);
-    });
-}
-
 
 function showCounter2Result(data) {
   if (!data || !data.id) return;
@@ -254,17 +188,72 @@ function handleQrScan(data) {
       .then((result) => {
         if (result.status === "success") {
           console.log("Added to queue:", result);
-          updateQueueDisplay(); // ✅ refresh Counter 3 queue
+          updateQueueDisplay();
         } else {
           console.warn("Queue add failed:", result.message);
-          alert(result.message);
         }
       })
       .catch((err) => console.error("add-to-queue error:", err));
   }
 }
 
-// ✅ New Debugging function
+/* ---------------- QUEUE DISPLAY (COUNTER 3) ---------------- */
+function updateQueueDisplay() {
+  fetch("/get-queue")
+    .then((res) => res.json())
+    .then((queue) => {
+      queue_list = queue || [];
+      const list = document.getElementById("queueList");
+      if (!list) return;
+
+      list.innerHTML = queue
+        .map(
+          (p, i) =>
+            `<li class="${p.is_current === "Y" ? "current" : ""}">
+               ${i + 1}. ${p.name} (${p.id})
+             </li>`
+        )
+        .join("");
+
+      updateCurrentPersonDisplay();
+    })
+    .catch((err) => console.error("updateQueueDisplay error:", err));
+}
+
+function updateCurrentPersonDisplay() {
+  const currentSpan = document.getElementById("currentPerson");
+  const nextSpan = document.getElementById("nextPerson");
+
+  if (!queue_list || queue_list.length === 0) {
+    if (currentSpan) currentSpan.textContent = "---";
+    if (nextSpan) nextSpan.textContent = "---";
+    return;
+  }
+
+  const currentIndex = queue_list.findIndex((p) => p.is_current === "Y");
+  if (currentIndex !== -1) {
+    const currentPerson = queue_list[currentIndex];
+    if (currentSpan) currentSpan.textContent = `${currentPerson.name} (${currentPerson.id})`;
+
+    const nextPerson = queue_list[currentIndex + 1];
+    if (nextSpan) nextSpan.textContent = nextPerson ? `${nextPerson.name} (${nextPerson.id})` : "No more people";
+  } else {
+    if (currentSpan) currentSpan.textContent = "---";
+    const nextPerson = queue_list[0];
+    if (nextSpan) nextSpan.textContent = nextPerson ? `${nextPerson.name} (${nextPerson.id})` : "---";
+  }
+}
+
+function startTracking() {
+  fetch("/update-current-person", { method: "POST" })
+    .then((res) => res.json())
+    .then((data) => {
+      updateQueueDisplay();
+    })
+    .catch((err) => console.error("startTracking error:", err));
+}
+
+/* ---------------- DEBUG TOOLS ---------------- */
 function checkQueue() {
   fetch("/get-queue")
     .then((res) => res.json())
@@ -276,6 +265,42 @@ function checkQueue() {
     .catch((err) => console.error("checkQueue error:", err));
 }
 
+/* ---------------- SETTINGS + EMAIL ---------------- */
+function saveSettings() {
+  const faceModel = document.getElementById("face-recognition").value;
+  const barcodeModel = document.getElementById("barcode-detection").value;
+
+  fetch("/save-settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ face: faceModel, barcode: barcodeModel })
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log("Settings saved:", data);
+      const saveStatus = document.getElementById("save-status");
+      if (saveStatus) {
+        saveStatus.textContent = "✅ Settings saved!";
+        setTimeout(() => (saveStatus.textContent = ""), 3000);
+      }
+    })
+    .catch(err => console.error("saveSettings error:", err));
+}
+
+function sendEmail() {
+  fetch("/send-email", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "success") {
+        alert("📩 Graduation email sent successfully!");
+      } else {
+        alert("Failed to send email: " + data.message);
+      }
+    })
+    .catch(err => console.error("sendEmail error:", err));
+}
+
+/* ---------------- AUTO REFRESH ---------------- */
 setInterval(() => {
   if (currentCounter === 3) {
     updateQueueDisplay();

@@ -223,11 +223,11 @@ def get_top_matches(face_img, database, top_n=3):
     similarities.sort(key=lambda x: x[1], reverse=True)
     return similarities[:top_n]
 
-def real_time(camera: CameraStream, latest_recognition, counter=1):
+def real_time(camera: CameraStream, latest_recognition_scan, counter=1):
 
     # Parameters for stillness detection
-    still_threshold = 20  # max movement in pixels to consider still
-    still_duration = 2    # seconds to hold still before capture
+    still_threshold = 35   # max movement in pixels to consider still
+    still_duration = 2     # seconds to hold still before capture
 
     last_face_pos = None
     still_start_time = None
@@ -235,6 +235,9 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
     top_matches = []
     current_person = None
     start_time = None
+
+    # store last valid recognition
+    last_valid_id, last_valid_name = None, None
 
     while True:
         frame = camera.get_frame()
@@ -246,17 +249,22 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
         person_id, name = None, None
 
         if len(results) == 0:
+            # if no face detected → keep last valid instead of resetting
+            person_id, name = last_valid_id, last_valid_name
             last_face_pos = None
             still_start_time = None
             captured = False
             top_matches = []
             current_person = None
             start_time = None
+
         else:
+            # pick largest face
             largest_face = max(results, key=lambda f: f['box'][2] * f['box'][3])
             x, y, w, h = largest_face['box']
             x, y = max(0, x), max(0, y)
 
+            # measure movement
             if last_face_pos is not None:
                 lx, ly, lw, lh = last_face_pos
                 movement = abs(x - lx) + abs(y - ly) + abs(w - lw) + abs(h - lh)
@@ -271,11 +279,15 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
                     remaining = int(still_duration - elapsed) + 1
 
                     countdown_label = f"Hold still... {remaining}s"
-                    (label_width, label_height), baseline = cv.getTextSize(countdown_label, cv.FONT_HERSHEY_SIMPLEX, 0.8, 2)
-                    cv.rectangle(frame, (x, y - label_height - baseline - 10), (x + label_width, y), (0, 255, 255), cv.FILLED)
+                    (label_width, label_height), baseline = cv.getTextSize(
+                        countdown_label, cv.FONT_HERSHEY_SIMPLEX, 0.8, 2
+                    )
+                    cv.rectangle(frame, (x, y - label_height - baseline - 10),
+                                 (x + label_width, y), (0, 255, 255), cv.FILLED)
                     cv.putText(frame, countdown_label, (x, y - 5),
-                                cv.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+                               cv.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
 
+                    # capture face after stillness
                     if elapsed >= still_duration and not captured:
                         margin = 10
                         x1 = max(0, x - margin)
@@ -286,12 +298,14 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
 
                         top_matches = get_top_matches(face_img, face_database)
                         captured = True
-                        
-                        # always update with Top-1
+
                         if top_matches:
                             best_id, best_sim = top_matches[0]
                             person_id = best_id
-                            name = id_to_name.get(best_id, best_id)  # map ID → Name if exists
+                            name = id_to_name.get(best_id, best_id)
+
+                            # update last valid recognition
+                            last_valid_id, last_valid_name = person_id, name
 
                             print(f"\nCaptured face: {name} ({best_sim*100:.2f}% similarity)")
 
@@ -306,9 +320,13 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 best_id, best_sim = top_matches[0]
                 label = f"{id_to_name.get(best_id, best_id)} ({best_sim*100:.1f}%)"
-                (label_width, label_height), baseline = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-                cv.rectangle(frame, (x, y - label_height - baseline - 5), (x + label_width, y), (0, 255, 0), cv.FILLED)
-                cv.putText(frame, label, (x, y - 5), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
+                (label_width, label_height), baseline = cv.getTextSize(
+                    label, cv.FONT_HERSHEY_SIMPLEX, 0.7, 2
+                )
+                cv.rectangle(frame, (x, y - label_height - baseline - 5),
+                             (x + label_width, y), (0, 255, 0), cv.FILLED)
+                cv.putText(frame, label, (x, y - 5),
+                           cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
 
                 # Stable detection logic (5s)
                 if name == current_person:
@@ -319,14 +337,15 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
                     current_person = name
                     start_time = time.time()
             else:
+                # show yellow box if no valid capture
                 cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
 
-        # Update latest_recognition dictionary (always Top-1)
-        latest_recognition[counter] = {
-            "id": person_id if person_id else "---",
-            "name": name if name else "---"
+        # always push last known recognition (not reset to "---")
+        latest_recognition_scan[counter] = {
+            "id": last_valid_id if last_valid_id else "---",
+            "name": last_valid_name if last_valid_name else "---"
         }
-        
+
         # Draw middle guide box
         h, w, _ = frame.shape
         rect_w, rect_h = 200, 200
@@ -340,6 +359,5 @@ def real_time(camera: CameraStream, latest_recognition, counter=1):
         if not ret:
             continue
 
-        # Yield frame in Flask streaming format
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
